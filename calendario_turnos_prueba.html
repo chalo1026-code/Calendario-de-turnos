@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario de Turnos - Prueba</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#667085;--primary:#1769aa;--border:#dfe4ea;--free:#b8ef8a}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#172b4d;color:white;padding:18px 20px;position:sticky;top:0;z-index:5}
+header h1{margin:0 0 5px;font-size:22px} header p{margin:0;color:#d8e2f0;font-size:13px}
+nav{display:flex;gap:7px;overflow:auto;padding:10px;background:white;border-bottom:1px solid var(--border);position:sticky;top:77px;z-index:4}
+nav button{border:1px solid var(--border);background:white;padding:10px 13px;border-radius:9px;white-space:nowrap;cursor:pointer}
+nav button.active{background:var(--primary);color:white;border-color:var(--primary)}
+main{max-width:1150px;margin:18px auto;padding:0 14px}.view{display:none}.view.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #00000008}
+h2{margin:0 0 13px;font-size:19px} h3{margin:0 0 10px;font-size:16px}
+.row{display:flex;gap:9px;flex-wrap:wrap}.field{flex:1;min-width:170px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px} input,select{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:white}
+button.primary{background:var(--primary);color:white;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+button.danger{background:#fff0f0;color:#b42318;border:1px solid #f2caca;padding:7px 10px;border-radius:7px}
+ul{padding:0;margin:10px 0 0;list-style:none}.item{border:1px solid var(--border);border-radius:10px;padding:11px;margin:7px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.badge{display:inline-block;padding:5px 8px;border-radius:7px;background:#eef4fb;font-size:12px;margin:2px}
+.shift{display:inline-flex;min-width:48px;justify-content:center;padding:8px 5px;border-radius:7px;font-weight:bold;margin:2px}.A{background:#dceeff}.B{background:#fff0c9}.C{background:#dcd7ff}.D{background:#fff9cc}.N{background:#e3f0ff}.L{background:#c8f7a8}
+.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{border:1px solid var(--border);padding:7px;text-align:center;font-size:12px}th{background:#f7f8fa;position:sticky;top:0}.domingoFestivo{color:#c62828!important;background:#ffe5e5!important;font-weight:800}.diaNumero{font-weight:700}.nombreDia{font-size:9px;color:#667085}.marcaFestivo{display:block;font-size:8px;color:#c62828}.person{text-align:left;font-weight:bold;white-space:nowrap}
+.small{font-size:12px;color:var(--muted)}.cyclebox{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.checkrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:9px}.checkrow label{margin:0;color:var(--text)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:600px){header h1{font-size:18px}.field{min-width:100%}.item{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <h1>📅 Calendario de Turnos</h1>
+  <p>Cliente → Puestos → Ciclos → Personal → Turnos</p>
+</header>
+<nav id="nav">
+  <button class="active" data-view="clientes">1. Clientes</button>
+  <button data-view="puestos">2. Puestos</button>
+  <button data-view="ciclos">3. Ciclos</button>
+  <button data-view="personal">4. Personal</button>
+  <button data-view="calendario">5. Calendario</button>
+</nav>
+
+<main>
+<section id="clientes" class="view active">
+<div class="card"><h2>Clientes</h2>
+<div class="row"><div class="field"><label>Nombre del cliente</label><input id="clienteNombre" placeholder="Ej. Empresa ABC"></div><div style="align-self:end"><button class="primary" onclick="addCliente()">+ Agregar cliente</button></div></div>
+<ul id="clientesList"></ul></div></section>
+
+<section id="puestos" class="view">
+<div class="card"><h2>Puestos de trabajo</h2>
+<div class="row"><div class="field"><label>Cliente</label><select id="puestoCliente"></select></div><div class="field"><label>Nombre del puesto</label><input id="puestoNombre" placeholder="Ej. Portería"></div><div style="align-self:end"><button class="primary" onclick="addPuesto()">+ Agregar puesto</button></div></div>
+<ul id="puestosList"></ul></div></section>
+
+<section id="ciclos" class="view">
+<div class="card"><h2>Ciclos de turnos</h2>
+<p class="small">Puedes usar A, B y C de 8 horas, además de D, N y L. El turno C cruza la medianoche.</p>
+<div class="row">
+<div class="field"><label>Cliente</label><select id="cicloCliente" onchange="fillPuestoSelect()"></select></div>
+<div class="field"><label>Puesto</label><select id="cicloPuesto"></select></div>
+<div class="field"><label>Nombre del ciclo</label><input id="cicloNombre" placeholder="Ej. A-B-C-L"></div>
+</div>
+<div class="row" style="margin-top:10px">
+<div class="field"><label>Secuencia (separada por comas)</label><input id="cicloSecuencia" placeholder="A,A,A,B,B,B,C,C,C,L,L"></div>
+<div style="align-self:end"><button class="primary" onclick="addCiclo()">+ Guardar ciclo</button></div>
+</div>
+<div class="checkrow">
+<label><input type="checkbox" id="domingos"> Libre los domingos</label>
+<label><input type="checkbox" id="festivos"> Libre domingos y festivos</label>
+</div>
+<div id="ciclosList"></div></div>
+
+<div class="card"><h3>Catálogo de turnos</h3>
+<div>
+<span class="shift A">A<br><small>06–14</small></span>
+<span class="shift B">B<br><small>14–22</small></span>
+<span class="shift C">C<br><small>22–06</small></span>
+<span class="shift D">D</span><span class="shift N">N</span><span class="shift L">L</span>
+</div></div>
+</section>
+
+<section id="personal" class="view">
+<div class="card"><h2>Personal</h2>
+<div class="row"><div class="field"><label>Cliente</label><select id="personalCliente" onchange="fillPersonalPuesto()"></select></div><div class="field"><label>Puesto</label><select id="personalPuesto" onchange="fillPersonalCiclo()"></select></div><div class="field"><label>Ciclo</label><select id="personalCiclo"></select></div></div>
+<div class="row" style="margin-top:10px">
+<div class="field"><label>Nombre de la persona</label><input id="personalNombre" placeholder="Ej. Gustavo"></div>
+<div class="field"><label>Fecha de inicio del ciclo</label><input type="date" id="personalFecha"></div>
+<div class="field"><label>Posición inicial del ciclo</label><select id="personalPosicion"><option value="">Selecciona primero un ciclo</option></select></div>
+<div style="align-self:end"><button class="primary" onclick="addPersonal()">+ Agregar personal</button></div>
+</div>
+<p class="small"><b>Orden:</b> Cliente → Puesto → Ciclo → Persona → Fecha → Posición inicial. Al elegir el ciclo aparecerán automáticamente sus posiciones.</p>
+<ul id="personalList"></ul></div></section>
+
+<section id="calendario" class="view">
+<div class="card"><h2>Calendario mensual</h2>
+<div class="row"><div class="field"><label>Mes</label><input type="month" id="mesCalendario"></div><div class="field"><label>Filtrar por cliente</label><select id="fCliente" onchange="renderCalendar()"></select></div><div class="field"><label>Filtrar por persona</label><select id="fPersona" onchange="renderCalendar()"></select></div></div>
+<div class="actions"><button class="primary" onclick="renderCalendar()">Actualizar calendario</button><button class="primary" onclick="downloadExcel()">⬇️ Descargar Excel</button><button onclick="window.print()">🖨️ Imprimir</button></div>
+<div class="tablewrap" style="margin-top:14px"><table id="calendarTable"></table></div>
+</div>
+<div class="card"><h3>Horarios</h3><div class="small">A = 06:00–14:00 · B = 14:00–22:00 · C = 22:00–06:00 · D/N/L quedan disponibles para ciclos personalizados.</div></div>
+</section>
+</main>
+
+<script>
+let data=JSON.parse(localStorage.getItem('turnosDemo')||'{"clientes":[],"puestos":[],"ciclos":[],"personal":[]}');
+const $=id=>document.getElementById(id);
+function save(){localStorage.setItem('turnosDemo',JSON.stringify(data)); refreshAll();}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function addCliente(){let n=$('clienteNombre').value.trim();if(!n)return alert('Escribe el nombre del cliente.');data.clientes.push({id:crypto.randomUUID(),nombre:n});$('clienteNombre').value='';save()}
+function addPuesto(){let c=$('puestoCliente').value,n=$('puestoNombre').value.trim();if(!c||!n)return alert('Selecciona cliente y escribe el puesto.');data.puestos.push({id:crypto.randomUUID(),clienteId:c,nombre:n});$('puestoNombre').value='';save()}
+function addCiclo(){let p=$('cicloPuesto').value,n=$('cicloNombre').value.trim(),seq=$('cicloSecuencia').value.split(',').map(x=>x.trim().toUpperCase()).filter(Boolean);if(!p||!n||!seq.length)return alert('Completa puesto, nombre y secuencia.');let valid=['A','B','C','D','N','L'];if(seq.some(x=>!valid.includes(x)))return alert('Solo se permiten A, B, C, D, N y L.');data.ciclos.push({id:crypto.randomUUID(),puestoId:p,nombre:n,secuencia:seq,domingos:$('domingos').checked,festivos:$('festivos').checked});$('cicloNombre').value='';$('cicloSecuencia').value='';$('domingos').checked=false;$('festivos').checked=false;save()}
+function addPersonal(){let c=$('personalCliente').value,p=$('personalPuesto').value,ci=$('personalCiclo').value,n=$('personalNombre').value.trim(),fecha=$('personalFecha').value,pos=Number($('personalPosicion').value);if(!c||!p||!ci||!n||!fecha||!$('personalPosicion').value)return alert('Completa cliente, puesto, ciclo, persona, fecha y posición inicial.');data.personal.push({id:crypto.randomUUID(),clienteId:c,puestoId:p,cicloId:ci,nombre:n,fechaInicio:fecha,posicionInicio:pos});$('personalNombre').value='';save()}
+function del(type,id){if(confirm('¿Eliminar este elemento?')){data[type]=data[type].filter(x=>x.id!==id);save()}}
+function opts(arr,selected=''){return arr.map(x=>`<option value="${x.id}" ${x.id===selected?'selected':''}>${esc(x.nombre)}</option>`).join('')}
+function refreshAll(){
+ $('clientesList').innerHTML=data.clientes.map(x=>`<li class="item"><b>${esc(x.nombre)}</b><button class="danger" onclick="del('clientes','${x.id}')">Eliminar</button></li>`).join('')||'<p class="small">No hay clientes.</p>';
+ $('puestoCliente').innerHTML='<option value="">Selecciona...</option>'+opts(data.clientes); $('cicloCliente').innerHTML='<option value="">Selecciona...</option>'+opts(data.clientes);
+ $('personalCliente').innerHTML='<option value="">Selecciona...</option>'+opts(data.clientes); $('fCliente').innerHTML='<option value="">Todos</option>'+opts(data.clientes);
+ $('puestosList').innerHTML=data.puestos.map(p=>{let c=data.clientes.find(x=>x.id===p.clienteId);return `<li class="item"><span><b>${esc(p.nombre)}</b> <span class="badge">${esc(c?.nombre||'Sin cliente')}</span></span><button class="danger" onclick="del('puestos','${p.id}')">Eliminar</button></li>`}).join('')||'<p class="small">No hay puestos.</p>';
+ fillPuestoSelect(); fillPersonalPuesto(); renderCiclos(); renderPersonal(); fillFilterPeople(); renderCalendar();
+}
+function fillPuestoSelect(){let c=$('cicloCliente').value; $('cicloPuesto').innerHTML='<option value="">Selecciona...</option>'+opts(data.puestos.filter(x=>!c||x.clienteId===c))}
+function fillPersonalPuesto(){let c=$('personalCliente').value; $('personalPuesto').innerHTML='<option value="">Selecciona...</option>'+opts(data.puestos.filter(x=>!c||x.clienteId===c));fillPersonalCiclo()}
+function fillPersonalCiclo(){
+  let p=$('personalPuesto').value;
+  let ciclos=data.ciclos.filter(x=>x.puestoId===p);
+  $('personalCiclo').innerHTML='<option value="">Selecciona un ciclo...</option>'+
+    ciclos.map(x=>`<option value="${x.id}">${esc(x.nombre)} — ${x.secuencia.join(' → ')}</option>`).join('');
+  $('personalPosicion').innerHTML='<option value="">Selecciona primero un ciclo</option>';
+}
+function fillPersonalPosicion(){
+  let ci=$('personalCiclo').value;
+  let ciclo=data.ciclos.find(x=>x.id===ci);
+  if(!ciclo){
+    $('personalPosicion').innerHTML='<option value="">Selecciona primero un ciclo</option>';
+    return;
+  }
+  $('personalPosicion').innerHTML=ciclo.secuencia.map((s,i)=>
+    `<option value="${i}">${i+1}. ${esc(s)}</option>`
+  ).join('');
+}
+function renderCiclos(){$('ciclosList').innerHTML=data.ciclos.map(x=>{let p=data.puestos.find(y=>y.id===x.puestoId),c=data.clientes.find(y=>y.id===p?.clienteId);return `<div class="item"><span><b>${esc(x.nombre)}</b> — ${esc(c?.nombre||'')} / ${esc(p?.nombre||'')}<div class="cyclebox">${x.secuencia.map(s=>`<span class="shift ${s}">${s}</span>`).join('')}</div><div class="small">${x.domingos?'Libre domingos · ':''}${x.festivos?'Libre domingos y festivos':''}</div></span><button class="danger" onclick="del('ciclos','${x.id}')">Eliminar</button></div>`}).join('')||'<p class="small">No hay ciclos.</p>'}
+function renderPersonal(){$('personalList').innerHTML=data.personal.map(x=>{let p=data.puestos.find(y=>y.id===x.puestoId),c=data.clientes.find(y=>y.id===x.clienteId),ci=data.ciclos.find(y=>y.id===x.cicloId),pos=ci?.secuencia?.[x.posicionInicio??0]||'?';return `<li class="item"><span><b>${esc(x.nombre)}</b><div class="small">${esc(c?.nombre||'')} · ${esc(p?.nombre||'')} · ${esc(ci?.nombre||'')} · Inicio: ${esc(x.fechaInicio||'Sin fecha')} · Posición: ${esc(pos)}</div></span><button class="danger" onclick="del('personal','${x.id}')">Eliminar</button></li>`}).join('')||'<p class="small">No hay personal.</p>'}
+function fillFilterPeople(){let c=$('fCliente').value;$('fPersona').innerHTML='<option value="">Todas</option>'+data.personal.filter(x=>!c||x.clienteId===c).map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}
+function xToDate(v){if(!v)return null;let [a,b,c]=v.split('-').map(Number);return new Date(a,b-1,c)}
+
+function easterSunday(year){
+  const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,
+        f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+        h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,
+        l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;
+  return new Date(year,month-1,day);
+}
+function addDays(date,n){let d=new Date(date);d.setDate(d.getDate()+n);return d}
+function isoDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function nextMonday(date){
+  let d=new Date(date), day=d.getDay();
+  if(day!==1)d.setDate(d.getDate()+(8-day)%7);
+  return d;
+}
+function colombianHolidays(year){
+  const out=new Set(), add=(month,day)=>out.add(`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
+  // Fixed Colombian holidays.
+  [[1,1],[5,1],[7,20],[8,7],[12,8],[12,25]].forEach(x=>add(x[0],x[1]));
+  // Holidays moved to Monday under Ley Emiliani.
+  [[1,6],[3,19],[6,29],[8,15],[10,12],[11,1],[11,11]].forEach(([m,d])=>{
+    out.add(isoDate(nextMonday(new Date(year,m-1,d))));
+  });
+  const easter=easterSunday(year);
+  // Holy Thursday and Good Friday are not moved.
+  out.add(isoDate(addDays(easter,-3)));
+  out.add(isoDate(addDays(easter,-2)));
+  // Ascension, Corpus Christi and Sacred Heart: Monday observance.
+  [43,64,71].forEach(offset=>out.add(isoDate(nextMonday(addDays(easter,offset)))));
+  return out;
+}
+function dayName(d){
+  return ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()];
+}
+
+function renderCalendar(){if(!$('mesCalendario').value){let d=new Date();$('mesCalendario').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}let [y,m]=$('mesCalendario').value.split('-').map(Number),days=new Date(y,m,0).getDate(),fc=$('fCliente').value,fp=$('fPersona').value;let people=data.personal.filter(x=>(!fc||x.clienteId===fc)&&(!fp||x.id===fp));const holidays=colombianHolidays(y);
+  let t='<tr><th>Personal</th>'+Array.from({length:days},(_,i)=>{
+    const d=new Date(y,m-1,i+1), iso=isoDate(d), special=d.getDay()===0||holidays.has(iso);
+    const mark=holidays.has(iso)?'<span class="marcaFestivo">Festivo</span>':'';
+    return `<th class="${special?'domingoFestivo':''}"><span class="diaNumero">${i+1}</span><br><span class="nombreDia">${dayName(d)}</span>${mark}</th>`;
+  }).join('')+'</tr>';for(let person of people){let ci=data.ciclos.find(x=>x.id===person.cicloId);let seq=ci?.secuencia||['L'];t+='<tr><td class="person">'+esc(person.nombre)+'</td>';for(let d=1;d<=days;d++){let date=new Date(y,m-1,d), start=xToDate(person.fechaInicio); let diff=start?Math.round((date-start)/86400000):0; let base=Number(person.posicionInicio||0); let idx=((base+diff)%seq.length+seq.length)%seq.length,s=seq[idx];t+=`<td><span class="shift ${s}">${s}</span></td>`}t+='</tr>'}if(!people.length)t+='<tr><td colspan="'+(days+1)+'" class="small">Agrega personal para ver el calendario.</td></tr>';$('calendarTable').innerHTML=t}
+
+function xlsxEsc(v){
+  return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+function colName(n){
+  let s='';
+  while(n>0){let r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}
+  return s;
+}
+function crc32(bytes){
+  let table=crc32.table;
+  if(!table){
+    table=[];
+    for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);table[n]=c>>>0;}
+    crc32.table=table;
+  }
+  let c=0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++)c=table[(c^bytes[i])&255]^(c>>>8);
+  return (c^0xFFFFFFFF)>>>0;
+}
+function u16(n){return new Uint8Array([n&255,(n>>>8)&255])}
+function u32(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255])}
+function joinBytes(parts){
+  let total=parts.reduce((a,b)=>a+b.length,0),out=new Uint8Array(total),pos=0;
+  for(const b of parts){out.set(b,pos);pos+=b.length}
+  return out;
+}
+function makeZip(files){
+  const enc=new TextEncoder(), locals=[], centrals=[]; let offset=0;
+  for(const f of files){
+    const name=enc.encode(f.name), data=typeof f.data==='string'?enc.encode(f.data):f.data;
+    const crc=crc32(data), lh=joinBytes([new Uint8Array([80,75,3,4]),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),name,data]);
+    locals.push(lh);
+    const ch=joinBytes([new Uint8Array([80,75,1,2]),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name]);
+    centrals.push(ch); offset+=lh.length;
+  }
+  const central=joinBytes(centrals), local=joinBytes(locals);
+  const end=joinBytes([new Uint8Array([80,75,5,6]),u16(0),u16(0),u16(files.length),u16(files.length),u32(central.length),u32(local.length),u16(0)]);
+  return joinBytes([local,central,end]);
+}
+function downloadExcel(){
+  renderCalendar();
+  const table=document.getElementById('calendarTable');
+  if(!table || table.rows.length<2){alert('No hay personal para exportar.');return;}
+
+  const rows=[...table.rows];
+  const styles=[], styleMap=new Map();
+
+  const COLORS={
+    normal:{bg:'FFFFFF',fg:'17202A',bold:false},
+    header:{bg:'F7F8FA',fg:'17202A',bold:true},
+    special:{bg:'FF5B5B',fg:'FFFFFF',bold:true},
+    person:{bg:'FFFFFF',fg:'17202A',bold:true},
+    A:{bg:'DCEEFF',fg:'17202A',bold:true},
+    B:{bg:'FFF0C9',fg:'17202A',bold:true},
+    C:{bg:'DCD7FF',fg:'17202A',bold:true},
+    D:{bg:'FFF9CC',fg:'17202A',bold:true},
+    N:{bg:'E3F0FF',fg:'17202A',bold:true},
+    L:{bg:'C8F7A8',fg:'17202A',bold:true}
+  };
+
+  function getStyleKey(key){
+    if(!styleMap.has(key)){styleMap.set(key,styles.length);styles.push(COLORS[key]||COLORS.normal);}
+    return styleMap.get(key);
+  }
+
+  function styleForCell(td,isHeader=false){
+    if(isHeader) return td.classList.contains('domingoFestivo') ? getStyleKey('special') : getStyleKey('header');
+    const shift=td.querySelector('.shift');
+    if(shift){
+      const cls=['A','B','C','D','N','L'].find(x=>shift.classList.contains(x));
+      return getStyleKey(cls||'normal');
+    }
+    if(td.classList.contains('person')) return getStyleKey('person');
+    return getStyleKey('normal');
+  }
+
+  const header=rows[0], headerCells=[...header.cells];
+  const sheetRows=[];
+  const dayRow=[], numberRow=[];
+  const maxCols=headerCells.length;
+
+  // Fila superior: título combinado con el mes y el año.
+  const monthValue=document.getElementById('mesCalendario').value || '';
+  let title='Calendario de Turnos';
+  if(monthValue){
+    const [yy,mm]=monthValue.split('-');
+    const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    title=`Calendario de Turnos — ${monthNames[Number(mm)-1] || mm} ${yy}`;
+  }
+
+  const titleStyle=getStyleKey('header');
+  sheetRows.push(`<row r="1" ht="30"><c r="A1" s="${titleStyle}" t="inlineStr"><is><t>${xlsxEsc(title)}</t></is></c></row>`);
+
+  // Fila 2 = 3 letras del día. Fila 3 = número del día.
+  headerCells.forEach((th,ci)=>{
+    const s=styleForCell(th,true), col=colName(ci+1);
+    if(ci===0){
+      dayRow.push(`<c r="A2" s="${s}" t="inlineStr"><is><t>Personal</t></is></c>`);
+      numberRow.push(`<c r="A3" s="${s}" t="inlineStr"><is><t></t></is></c>`);
+    }else{
+      const day=th.querySelector('.nombreDia')?.textContent.trim()||'';
+      const num=th.querySelector('.diaNumero')?.textContent.trim()||'';
+      dayRow.push(`<c r="${col}2" s="${s}" t="inlineStr"><is><t>${xlsxEsc(day.slice(0,3))}</t></is></c>`);
+      numberRow.push(`<c r="${col}3" s="${s}" t="inlineStr"><is><t>${xlsxEsc(num)}</t></is></c>`);
+    }
+  });
+  sheetRows.push(`<row r="2" ht="22">${dayRow.join('')}</row>`);
+  sheetRows.push(`<row r="3" ht="22">${numberRow.join('')}</row>`);
+
+  // Personal y turnos desde la fila 4.
+  for(let ri=1;ri<rows.length;ri++){
+    const cells=[...rows[ri].cells], out=[], excelRow=ri+3;
+    cells.forEach((td,ci)=>{
+      const value=td.textContent.replace(/\s+/g,' ').trim();
+      const s=styleForCell(td,false), col=colName(ci+1);
+      out.push(`<c r="${col}${excelRow}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xlsxEsc(value)}</t></is></c>`);
+    });
+    sheetRows.push(`<row r="${excelRow}" ht="30">${out.join('')}</row>`);
+  }
+
+  const cols=Array.from({length:maxCols},(_,i)=>
+    `<col min="${i+1}" max="${i+1}" width="${i===0?24:7}" customWidth="1"/>`).join('');
+
+  const lastCol=colName(maxCols);
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<cols>${cols}</cols>
+<sheetData>${sheetRows.join('')}</sheetData>
+<mergeCells count="2"><mergeCell ref="A1:${lastCol}1"/><mergeCell ref="A2:A3"/></mergeCells>
+</worksheet>`;
+
+  const fonts=[
+    '<font><sz val="11"/><name val="Arial"/><color rgb="FF17202A"/></font>',
+    '<font><b/><sz val="11"/><name val="Arial"/><color rgb="FF17202A"/></font>',
+    '<font><b/><sz val="14"/><name val="Arial"/><color rgb="FF17202A"/></font>',
+    '<font><b/><sz val="11"/><name val="Arial"/><color rgb="FFFFFFFF"/></font>'
+  ];
+  const fills=[
+    '<fill><patternFill patternType="none"/></fill>',
+    '<fill><patternFill patternType="gray125"/></fill>'
+  ];
+  styles.forEach(s=>fills.push(
+    `<fill><patternFill patternType="solid"><fgColor rgb="FF${s.bg}"/><bgColor rgb="FF${s.bg}"/></patternFill></fill>`
+  ));
+  // Estilo especial para el título.
+  styles.push({bg:'EAF2F8',fg:'17202A',bold:true});
+  const titleStyleId=styles.length-1;
+  fills.push('<fill><patternFill patternType="solid"><fgColor rgb="FFEAF2F8"/><bgColor rgb="FFEAF2F8"/></patternFill></fill>');
+
+  const borders=[
+    '<border><left/><right/><top/><bottom/><diagonal/></border>',
+    '<border><left style="thin"><color rgb="FFD0D5DD"/></left><right style="thin"><color rgb="FFD0D5DD"/></right><top style="thin"><color rgb="FFD0D5DD"/></top><bottom style="thin"><color rgb="FFD0D5DD"/></bottom><diagonal/></border>'
+  ];
+
+  const cellXfs=[];
+  styles.forEach((s,i)=>{
+    let fontId=0;
+    if(i===titleStyleId) fontId=2;
+    else if(s.fg==='FFFFFF') fontId=3;
+    else if(s.bold) fontId=1;
+    cellXfs.push(`<xf numFmtId="0" fontId="${fontId}" fillId="${2+i}" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>`);
+  });
+
+  const stylesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="${fonts.length}">${fonts.join('')}</fonts>
+<fills count="${fills.length}">${fills.join('')}</fills>
+<borders count="${borders.length}">${borders.join('')}</borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="${cellXfs.length}">${cellXfs.join('')}</cellXfs>
+</styleSheet>`;
+
+  const workbook=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Calendario" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+  const rootRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const types=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const zip=makeZip([
+    {name:'[Content_Types].xml',data:types},
+    {name:'_rels/.rels',data:rootRels},
+    {name:'xl/workbook.xml',data:workbook},
+    {name:'xl/_rels/workbook.xml.rels',data:rels},
+    {name:'xl/worksheets/sheet1.xml',data:sheet},
+    {name:'xl/styles.xml',data:stylesXml}
+  ]);
+  const blob=new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='Calendario_Turnos_'+(monthValue||'calendario')+'.xlsx';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.view).classList.add('active');if(b.dataset.view==='calendario')renderCalendar()});
+$('mesCalendario').addEventListener('change',renderCalendar);$('personalCiclo').addEventListener('change',fillPersonalPosicion);$('fCliente').addEventListener('change',()=>{fillFilterPeople();renderCalendar()});$('fPersona').addEventListener('change',renderCalendar);
+refreshAll();
+</script>
+</body>
+</html>
